@@ -23,7 +23,7 @@ async def chat_handler(websocket, path):
             await websocket.send(json.dumps({'response': response[cursor:], 'end': False}))
 
         try:
-            suggest = await create_chat_request(prompt=prompt, style=model, cookies=cookies, callback=process_response)
+            suggest = await create_chat_request(prompt=prompt, model=model, cookies=cookies, callback=process_response)
             await websocket.send(json.dumps({'suggested': suggest, 'response': '', 'end': True}))
         except Exception as e:
             await websocket.send(json.dumps({'error': f'bing error: {str(e)}', 'response': '', 'end': True}))
