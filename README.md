@@ -1,9 +1,17 @@
 <div align="center">
 
 # Chat Nio Bing Service
-[ChatNio](https://github.com/Deeptrain-Community/chatnio) Bing Service base on EdgeGPT
+[ChatNio](https://github.com/Deeptrain-Community/chatnio) Bing Service
 
 </div>
+
+## Install
+```shell
+pip install -r requirements.txt
+```
+
+- save new bing cookies to `~/cookie.txt`
+- configurate `config.yaml`
 
 ## API
 [websocket] http://localhost:8765/chat
@@ -12,7 +20,7 @@ client sent:
 ```json
 {
   "prompt": "string",
-  "cookies": "list[dict]",
+  "hash": "md5 string (prompt + config secret)",
   "model": "creative"
 }
 ```
@@ -20,9 +28,6 @@ client sent:
 stream response:
 ```json
 {
-  "response": "string",
-  "suggested": "list[string] (optional)",
-  "error": "string (optional)",
-  "end": "bool"
+  "response": "string"
 }
 ```

@@ -1,7 +1,16 @@
 import asyncio
+import hashlib
 import json
 import websockets
-from service import create_chat_request
+import yaml
+from service import create_chat
+
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+
+
+def validate_hash(prompt: str, _hash: str) -> bool:
+    return hashlib.md5(prompt + config['secret']).hexdigest() == _hash
 
 
 async def chat_handler(websocket, path):
@@ -9,31 +18,21 @@ async def chat_handler(websocket, path):
         await websocket.close()
         return
 
-    try:
-        data = await websocket.recv()
-        params = json.loads(data)
-        prompt = params.get('prompt')
-        model = params.get('model')
-        cookies = params.get('cookies')
-        cursor = 0
-
-        async def process_response(response: str):
-            nonlocal cursor
-            cursor = len(response)
-            await websocket.send(json.dumps({'response': response[cursor:], 'end': False}))
-
-        try:
-            suggest = await create_chat_request(prompt=prompt, model=model, cookies=cookies, callback=process_response)
-            await websocket.send(json.dumps({'suggested': suggest, 'response': '', 'end': True}))
-        except Exception as e:
-            await websocket.send(json.dumps({'error': str(e), 'response': '', 'end': True}))
-
+    data = await websocket.recv()
+    params = json.loads(data)
+    prompt = params.get('prompt')
+    model = params.get('model')
+    if not validate_hash(prompt, params.get('hash')):
         await websocket.close()
-    except Exception as e:
-        print(f"WebSocket Error: {e}")
+        return
+
+    async for data in create_chat(prompt=prompt, model=model):
+        await websocket.send(json.dumps({'response': data, 'end': False}))
+
+    await websocket.close()
 
 
 if __name__ == "__main__":
-    server = websockets.serve(chat_handler, "localhost", 8765)
+    server = websockets.serve(chat_handler, config['host'], config['port'])
     asyncio.get_event_loop().run_until_complete(server)
     asyncio.get_event_loop().run_forever()

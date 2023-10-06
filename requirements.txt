@@ -1,2 +1,3 @@
-EdgeGPT
+async_bing_client
 websockets
+pyyaml

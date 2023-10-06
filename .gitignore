@@ -6,3 +6,5 @@ __pycache__
 *.pyw
 
 cookie.json
+data1.json
+config.yaml
