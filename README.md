@@ -20,7 +20,7 @@ client sent:
 ```json
 {
   "prompt": "string",
-  "hash": "md5 string (prompt + config secret)",
+  "hash": "string (secret)",
   "model": "creative"
 }
 ```

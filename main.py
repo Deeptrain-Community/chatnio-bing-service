@@ -10,7 +10,7 @@ with open('config.yaml', 'r') as file:
 
 
 def validate_hash(prompt: str, _hash: str) -> bool:
-    return hashlib.md5((prompt + config['secret']).encode('utf-8')).hexdigest() == _hash
+    return config['secret'] == _hash
 
 
 async def chat_handler(websocket, path):
