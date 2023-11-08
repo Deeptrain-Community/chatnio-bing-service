@@ -1,9 +1,17 @@
 import asyncio
+import json
 import os
+import random
 
 from async_bing_client import *
 
-client = Bing_Client(cookie='cookie.json', proxy=os.environ.get('http_proxy', None) or os.environ.get('https_proxy', None))
+with open('cookie.json', 'r') as file:
+    cookie = json.load(file)
+
+clients = [
+    Bing_Client(cookie=segment, proxy=os.environ.get('http_proxy', None) or os.environ.get('https_proxy', None))
+    for segment in cookie
+]
 
 STYLES = {
     "creative": ConversationStyle.Creative,
@@ -29,15 +37,16 @@ def getSearchResult(data: SearchResult) -> str:
         return data.content
 
 
-async def create_chat(prompt: str, model: str):
+async def create_chat(prompt: str, model: str, retry: int = 0):
+    instance = random.choice(clients)
     try:
-        chat = await client.create_chat()
+        chat = await instance.create_chat()
         sources = []
         suggest_reply = []
         images = []
         limit = None
         style = STYLES.get(model, ConversationStyle.Creative)
-        async for data in client.ask_stream_raw(prompt, None, chat=chat, conversation_style=style):
+        async for data in instance.ask_stream_raw(prompt, None, chat=chat, conversation_style=style):
             if isinstance(data, Text):
                 yield data.content
             elif isinstance(data, SuggestRely):
@@ -67,6 +76,14 @@ async def create_chat(prompt: str, model: str):
         if limit and limit.num_user_messages > limit.max_num_user_messages:
             yield "\nYou have reached the limit of the number of messages you can send. Please try again tomorrow."
     except Exception as e:
-        yield f'bing error: {e}'
+        if retry >= 3:
+            yield f'bing error: {e}'
+        else:
+            print(f'bing error: {e}, retry {retry + 1} times')
+            async for data in create_chat(prompt, model, retry + 1):
+                yield data
 
-asyncio.new_event_loop().run_until_complete(client.init())
+
+async def init_client():
+    for instance in clients:
+        await instance.init()

@@ -1,16 +1,11 @@
 import asyncio
-import hashlib
 import json
 import websockets
 import yaml
-from service import create_chat
+from service import create_chat, init_client
 
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
-
-
-def validate_hash(prompt: str, _hash: str) -> bool:
-    return config['secret'] == _hash
 
 
 async def chat_handler(websocket, path):
@@ -22,7 +17,7 @@ async def chat_handler(websocket, path):
     params = json.loads(data)
     prompt = params.get('prompt')
     model = params.get('model')
-    if not validate_hash(prompt, params.get('hash')):
+    if not params.get('hash') == config['secret']:
         await websocket.close()
         return
 
@@ -32,7 +27,13 @@ async def chat_handler(websocket, path):
     await websocket.close()
 
 
-if __name__ == "__main__":
+def run():
     server = websockets.serve(chat_handler, config['host'], config['port'])
-    asyncio.get_event_loop().run_until_complete(server)
-    asyncio.get_event_loop().run_forever()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(init_client())
+    loop.run_until_complete(server)
+    loop.run_forever()
+
+
+if __name__ == "__main__":
+    run()
