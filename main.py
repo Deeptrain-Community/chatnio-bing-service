@@ -9,22 +9,26 @@ with open('config.yaml', 'r') as file:
 
 
 async def chat_handler(websocket, path):
-    if path != '/chat':
+    try:
+        if path != '/chat':
+            await websocket.close()
+            return
+
+        data = await websocket.recv()
+        params = json.loads(data)
+        prompt = params.get('prompt')
+        model = params.get('model')
+        if not params.get('hash') == config['secret']:
+            await websocket.close()
+            return
+
+        async for data in create_chat(prompt=prompt, model=model):
+            await websocket.send(json.dumps({'response': data, 'end': False}))
+
+        await websocket.send(json.dumps({'response': '', 'end': True}))
         await websocket.close()
-        return
-
-    data = await websocket.recv()
-    params = json.loads(data)
-    prompt = params.get('prompt')
-    model = params.get('model')
-    if not params.get('hash') == config['secret']:
-        await websocket.close()
-        return
-
-    async for data in create_chat(prompt=prompt, model=model):
-        await websocket.send(json.dumps({'response': data, 'end': False}))
-
-    await websocket.close()
+    except Exception as e:
+        print(e)
 
 
 def run():
