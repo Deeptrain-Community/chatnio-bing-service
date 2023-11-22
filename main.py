@@ -1,43 +1,44 @@
-import asyncio
-import json
-import websockets
+from concurrent.futures import ThreadPoolExecutor
+from queue import Queue
+
+import uvicorn
 import yaml
-from service import create_chat, init_client
+from fastapi import FastAPI, WebSocket
+from task import run_task
 
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
+app = FastAPI()
 
-async def chat_handler(websocket, path):
-    try:
-        if path != '/chat':
-            await websocket.close()
-            return
 
-        data = await websocket.recv()
-        params = json.loads(data)
-        prompt = params.get('prompt')
-        model = params.get('model')
-        if not params.get('hash') == config['secret']:
-            await websocket.close()
-            return
+@app.websocket_route("/chat")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    data = await websocket.receive_json()
 
-        async for data in create_chat(prompt=prompt, model=model):
-            await websocket.send(json.dumps({'response': data, 'end': False}))
-
-        await websocket.send(json.dumps({'response': '', 'end': True}))
+    if not data.get('hash') == config['secret']:
         await websocket.close()
-    except Exception as e:
-        print(e)
+        return
 
+    content = data.get('prompt', '')
 
-def run():
-    server = websockets.serve(chat_handler, config['host'], config['port'])
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(init_client())
-    loop.run_until_complete(server)
-    loop.run_forever()
+    queue = Queue()
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(run_task, queue, content)
+    while True:
+        chunk = queue.get()
+        if chunk is None:
+            break
+
+        await websocket.send_json({
+            'response': chunk,
+            'end': False,
+        })
+
+    await websocket.send_json({'response': '', 'end': True})
+    await websocket.close()
 
 
 if __name__ == "__main__":
-    run()
+    uvicorn.run(app, host=config['host'], port=config['port'])

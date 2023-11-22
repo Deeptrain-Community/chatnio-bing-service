@@ -1,3 +1,7 @@
 async_bing_client
-websockets
+fastapi
 pyyaml
+selenium
+undetected_chromedriver
+webdriver_manager
+uvicorn
