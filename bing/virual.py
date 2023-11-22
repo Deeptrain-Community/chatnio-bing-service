@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from selenium.webdriver.common.by import By as Selector
@@ -16,7 +17,7 @@ with open(RUNNING_DIR + '/detector.js', 'r') as fp:
     detector = fp.read()
 
 
-def handle_request(content: str, max_timeout: int = 60 * 10) -> Generator[str, None, None]:
+async def handle_request(content: str, max_timeout: int = 60 * 10) -> Generator[str, None, None]:
     script = executor.replace("{{content}}", content)
     buffer = ""
 
@@ -26,7 +27,7 @@ def handle_request(content: str, max_timeout: int = 60 * 10) -> Generator[str, N
         driver = webdriver.Edge(options=options)
         driver.get('https://www.bing.com/search?form=MY0291&OCID=MY0291&q=Bing+AI&showconv=1')
 
-        time.sleep(10)
+        await asyncio.sleep(10)
 
         # execute javascript
         driver.execute_script(script)
@@ -35,7 +36,7 @@ def handle_request(content: str, max_timeout: int = 60 * 10) -> Generator[str, N
         stamp = time.time()
         started = time.time()
         while time.time() - started < max_timeout:
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
             resp = driver.execute_script("return getText()")
             if resp is None:
                 continue

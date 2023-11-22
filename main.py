@@ -1,10 +1,8 @@
-from concurrent.futures import ThreadPoolExecutor
-from queue import Queue
-
 import uvicorn
 import yaml
 from fastapi import FastAPI, WebSocket
-from task import run_task
+
+from bing.virual import handle_request
 
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
@@ -23,14 +21,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     content = data.get('prompt', '')
 
-    queue = Queue()
-    executor = ThreadPoolExecutor(max_workers=1)
-    executor.submit(run_task, queue, content)
-    while True:
-        chunk = queue.get()
-        if chunk is None:
-            break
-
+    async for chunk in handle_request(content):
         await websocket.send_json({
             'response': chunk,
             'end': False,
