@@ -6,7 +6,7 @@ import undetected_chromedriver as uc
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 from selenium import webdriver
-from typing import Generator, Dict, Any
+from typing import Generator, Dict, List, Any
 
 RUNNING_DIR = "." if __name__ == "__main__" else "bing"
 
@@ -17,7 +17,7 @@ with open(RUNNING_DIR + '/detector.js', 'r') as fp:
     detector = fp.read()
 
 
-async def handle_request(content: str, cookies: Dict[str, Any], max_timeout: int = 60 * 10)\
+async def handle_request(content: str, cookies: List[Dict[str, Any]], max_timeout: int = 60 * 10)\
         -> Generator[str, None, None]:
     script = executor.replace("{{content}}", content)
     buffer = ""
@@ -27,8 +27,12 @@ async def handle_request(content: str, cookies: Dict[str, Any], max_timeout: int
 
         driver = webdriver.Edge(options=options)
         driver.get('https://www.bing.com/search?form=MY0291&OCID=MY0291&q=Bing+AI&showconv=1')
+
+        await asyncio.sleep(2)
+
         # set cookies
         for cookie in cookies:
+            cookie['sameSite'] = 'None'
             driver.add_cookie(cookie)
 
         await asyncio.sleep(10)
@@ -59,7 +63,6 @@ async def handle_request(content: str, cookies: Dict[str, Any], max_timeout: int
 
         driver.quit()
     except Exception as e:
+        print(str(e))
         if len(buffer.strip()) == 0:
             yield str(e)
-    finally:
-        yield ""
