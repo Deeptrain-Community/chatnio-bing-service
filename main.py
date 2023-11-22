@@ -1,3 +1,5 @@
+import random
+
 import uvicorn
 import yaml
 from fastapi import FastAPI, WebSocket
@@ -6,6 +8,9 @@ from bing.virual import handle_request
 
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
+
+with open('cookie.json', 'r') as file:
+    cookie = yaml.safe_load(file)
 
 app = FastAPI()
 
@@ -20,8 +25,9 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     content = data.get('prompt', '')
+    cookies = random.choice(cookie)
 
-    async for chunk in handle_request(content):
+    async for chunk in handle_request(content, cookies):
         await websocket.send_json({
             'response': chunk,
             'end': False,
